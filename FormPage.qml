@@ -27,83 +27,95 @@ Item {
     Component {
         id: textInputComponent
         TextField {
+            property var field
+
             id: textField
-            placeholderText: modelData.placeholder || ""
+            placeholderText: field.placeholder || ""
             Binding {
                 target: textField
                 property: "text"
-                value: formData[modelData.key] === undefined ? "" : String(formData[modelData.key])
+                value: formData[field.key] === undefined ? "" : String(formData[field.key])
                 when: !textField.activeFocus
                 restoreMode: Binding.RestoreNone
             }
-            onTextEdited: formController.setFieldText(modelData.key, text)
+            onTextEdited: formController.setFieldText(field.key, text)
         }
     }
 
     Component {
         id: selectInputComponent
+
         ComboBox {
+            property var field
+
             id: selectCombo
-            model: modelData.options || []
+            model: field.options || []
             Binding {
                 target: selectCombo
                 property: "currentIndex"
-                value: formController.optionIndex(modelData.options || [], formData[modelData.key])
+                value: formController.optionIndex(field.options || [], formData[field.key])
                 when: !selectCombo.activeFocus
                 restoreMode: Binding.RestoreNone
             }
-            onActivated: formController.setFieldValue(modelData.key, currentText)
+            onActivated: formController.setFieldValue(field.key, currentText)
         }
     }
 
     Component {
         id: numberInputComponent
         TextField {
+            property var field
+
             id: numberField
-            placeholderText: modelData.placeholder || ""
+            placeholderText: field.placeholder || ""
             inputMethodHints: Qt.ImhFormattedNumbersOnly
             Binding {
                 target: numberField
                 property: "text"
-                value: formData[modelData.key] === undefined ? "" : String(formData[modelData.key])
+                value: formData[field.key] === undefined ? "" : String(formData[field.key])
                 when: !numberField.activeFocus
                 restoreMode: Binding.RestoreNone
             }
-            onTextEdited: formController.setFieldText(modelData.key, text)
+            onTextEdited: formController.setFieldText(field.key, text)
         }
     }
 
     Component {
         id: boolInputComponent
         Switch {
-            checked: !!formData[modelData.key]
+            property var field
+
+            checked: !!formData[field.key]
             text: checked ? "是" : "否"
-            onToggled: formController.setFieldValue(modelData.key, checked)
+            onToggled: formController.setFieldValue(field.key, checked)
         }
     }
 
     Component {
         id: multilineInputComponent
         TextArea {
+            property var field
+
             id: textArea
-            placeholderText: modelData.placeholder || ""
+            placeholderText: field.placeholder || ""
             wrapMode: TextEdit.Wrap
             Layout.preferredHeight: 90
             Binding {
                 target: textArea
                 property: "text"
-                value: formData[modelData.key] === undefined ? "" : String(formData[modelData.key])
+                value: formData[field.key] === undefined ? "" : String(formData[field.key])
                 when: !textArea.activeFocus
                 restoreMode: Binding.RestoreNone
             }
             onTextChanged: {
                 if (activeFocus) {
-                    formController.setFieldText(modelData.key, text);
+                    formController.setFieldText(field.key, text);
                 }
             }
         }
     }
 
+    // 表单主体
     ScrollView {
         anchors.fill: parent
         // contentWidth: container
@@ -117,6 +129,14 @@ Item {
                 font.family: p_theme.fontDisplay
                 font.pixelSize: 24
                 color: p_theme.textPrimary
+            }
+
+            Label {
+                text: qsTr("%1").arg(JSON.stringify(formData))
+            }
+
+            Label {
+                text: qsTr("%1").arg(JSON.stringify(p_formDefinition.fields))
             }
 
             Frame {
@@ -133,10 +153,13 @@ Item {
 
                     Repeater {
                         model: root.formFields
-                        delegate: RowLayout {
+
+                        RowLayout {
                             id: fieldRow
                             spacing: p_theme.spacingSm
                             Layout.fillWidth: true
+
+                            required property var modelData
 
                             Label {
                                 text: modelData.label
@@ -146,23 +169,32 @@ Item {
                             }
 
                             Loader {
+                                id: fieldLoader
+                                property var field: fieldRow.modelData
+
                                 Layout.preferredWidth: p_theme.formInputWidth
                                 Layout.maximumWidth: p_theme.formInputMaxWidth
                                 sourceComponent: {
-                                    if (modelData.type === "select") {
+                                    if (field.type === "select") {
                                         return selectInputComponent;
                                     }
-                                    if (modelData.type === "number") {
+                                    if (field.type === "number") {
                                         return numberInputComponent;
                                     }
-                                    if (modelData.type === "bool") {
+                                    if (field.type === "bool") {
                                         return boolInputComponent;
                                     }
-                                    if (modelData.type === "multiline") {
+                                    if (field.type === "multiline") {
                                         return multilineInputComponent;
                                     }
                                     return textInputComponent;
                                 }
+                            }
+                            Binding {
+                                target: fieldLoader.item
+                                property: "field"
+                                value: fieldLoader.field
+                                when: fieldLoader.status === Loader.Ready
                             }
                         }
                     }
