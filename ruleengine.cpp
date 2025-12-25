@@ -1,8 +1,8 @@
 // Rule evaluation helpers and core engine.
 #include "ruleengine.h"
 
-#include <QString>
 #include <QMetaType>
+#include <QString>
 
 namespace {
 QVariant toNumber(const QVariant& value)
@@ -177,20 +177,13 @@ bool matchesCondition(const QVariantMap& formData, const QVariantMap& condition)
     return false;
 }
 
-bool matchesRule(const QVariantMap& rule, const QVariantMap& formData)
+bool matchesRule(const Rule* rule, const QVariantMap& formData)
 {
-    const auto enabledValue = rule.value("$enabled");
-    const bool enabled = enabledValue.isValid() ? enabledValue.toBool() : rule.value("enabled").toBool();
-    if (!enabled) {
+    if (!rule->enabled()) {
         return false;
     }
-    const auto conditionsValue = rule.value("$and");
-    const auto conditions = conditionsValue.isValid() ? conditionsValue.toList() : rule.value("and").toList();
-    if (conditions.isEmpty()) {
-        return false;
-    }
-    for (const auto& item : conditions) {
-        if (!matchesCondition(formData, item.toMap())) {
+    for (const auto& condition : rule->conditions()) {
+        if (!matchesCondition(formData, condition->toJSON())) {
             return false;
         }
     }
@@ -199,20 +192,14 @@ bool matchesRule(const QVariantMap& rule, const QVariantMap& formData)
 } // namespace
 
 namespace RuleEngine {
-QVariantMap evaluate(const QVariantList& rules,
-                     const QString& formId,
-                     const QVariantMap& formData,
-                     const QVariantMap& resultMap)
+QVariantMap evaluate(const QList<Rule*>& rules,
+    const QString& formId,
+    const QVariantMap& formData,
+    const QVariantMap& resultMap)
 {
-    QVariantList matched;
-    for (const auto& item : rules) {
-        const auto rule = item.toMap();
-        // Accept $-prefixed and legacy keys for compatibility.
-        auto ruleFormId = rule.value("$form_id").toString();
-        if (ruleFormId.isEmpty()) {
-            ruleFormId = rule.value("formId").toString();
-        }
-        if (ruleFormId != formId) {
+    QList<Rule*> matched;
+    for (const auto& rule : rules) {
+        if (rule->formId() != formId) {
             continue;
         }
         if (matchesRule(rule, formData)) {
@@ -222,19 +209,18 @@ QVariantMap evaluate(const QVariantList& rules,
 
     QVariantList codes;
     QVariantList labels;
-    for (const auto& item : matched) {
-        const auto rule = item.toMap();
-        auto code = rule.value("$result").toString();
-        if (code.isEmpty()) {
-            code = rule.value("result").toString();
-        }
-        codes.append(code);
-        const auto label = resultMap.value(code, QStringLiteral("未知结果")).toString();
-        labels.append(code.isEmpty() ? label : code + " - " + label);
+    for (const auto& rule : matched) {
+        codes.append(rule->result());
+        const auto label = resultMap.value(rule->result(), QStringLiteral("未知结果")).toString();
+        labels.append(rule->result() + " - " + label);
     }
 
-    return QVariantMap{
-        { "matchedRules", matched },
+    QVariantList matchedRules;
+    for (const auto& rule : matched) {
+        matchedRules.append(rule->toJSON());
+    }
+    return QVariantMap {
+        { "matchedRules", matchedRules },
         { "resultCodes", codes },
         { "resultLabels", labels }
     };

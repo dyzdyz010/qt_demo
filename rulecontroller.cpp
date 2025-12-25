@@ -43,7 +43,13 @@ QVariantMap RuleController::evaluate(const QString& formId, const QVariantMap& f
     if (!m_model) {
         return {};
     }
-    return RuleEngine::evaluate(m_model->rules(), formId, formData, m_model->resultMap());
+    QList<Rule*> rulesCopy;
+    const QList<Rule*>& modelRules = m_model->rules();
+    rulesCopy.reserve(modelRules.size());
+    for (const auto& rule : modelRules) {
+        rulesCopy.append(rule);
+    }
+    return RuleEngine::evaluate(rulesCopy, formId, formData, m_model->resultMap());
 }
 
 bool RuleController::isListOp(const QString& op) const

@@ -11,6 +11,10 @@
 RuleEditorController::RuleEditorController(QObject* parent)
     : QObject(parent)
 {
+
+    m_conditionModel = new ConditionModel(this);
+    connect(m_conditionModel, &ConditionModel::conditionsChanged, this,
+        [this]() { m_currentRule->setConditions(m_conditionModel->conditions()); });
 }
 
 RuleModel* RuleEditorController::model() const
@@ -46,7 +50,7 @@ void RuleEditorController::setFormModel(FormModel* model)
     }
     m_formModel = model;
     emit formModelChanged();
-    normalizeConditionsForForm(m_ruleFormId);
+    normalizeConditionsForForm(m_currentRule->formId());
 }
 
 RuleController* RuleEditorController::controller() const
@@ -78,57 +82,9 @@ void RuleEditorController::setSelectedIndex(int index)
     loadRule(index);
 }
 
-QString RuleEditorController::ruleId() const
+Rule* RuleEditorController::currentRule() const
 {
-    return m_ruleId;
-}
-
-QString RuleEditorController::ruleFormId() const
-{
-    return m_ruleFormId;
-}
-
-void RuleEditorController::setRuleFormId(const QString& formId)
-{
-    if (m_ruleFormId == formId) {
-        return;
-    }
-    m_ruleFormId = formId;
-    emit ruleFormIdChanged();
-    normalizeConditionsForForm(m_ruleFormId);
-}
-
-QString RuleEditorController::ruleResult() const
-{
-    return m_ruleResult;
-}
-
-void RuleEditorController::setRuleResult(const QString& result)
-{
-    if (m_ruleResult == result) {
-        return;
-    }
-    m_ruleResult = result;
-    emit ruleResultChanged();
-}
-
-bool RuleEditorController::ruleEnabled() const
-{
-    return m_ruleEnabled;
-}
-
-void RuleEditorController::setRuleEnabled(bool enabled)
-{
-    if (m_ruleEnabled == enabled) {
-        return;
-    }
-    m_ruleEnabled = enabled;
-    emit ruleEnabledChanged();
-}
-
-ConditionModel* RuleEditorController::conditionsModel()
-{
-    return &m_conditions;
+    return m_currentRule;
 }
 
 void RuleEditorController::addRule()
@@ -164,14 +120,14 @@ void RuleEditorController::removeRule()
 
 void RuleEditorController::addCondition()
 {
-    const auto fieldKeys = fieldKeysForForm(m_ruleFormId);
+    const auto fieldKeys = fieldKeysForForm(m_currentRule->formId());
     const auto fieldKey = fieldKeys.isEmpty() ? QString() : fieldKeys.first();
-    m_conditions.addCondition(fieldKey, "$eq", "");
+    m_currentRule->addCondition(fieldKey, "$eq", QVariant());
 }
 
 void RuleEditorController::removeCondition(int row)
 {
-    m_conditions.removeCondition(row);
+    m_currentRule->removeCondition(row);
 }
 
 void RuleEditorController::saveRule()
@@ -179,87 +135,43 @@ void RuleEditorController::saveRule()
     if (!m_model || m_selectedIndex < 0 || m_selectedIndex >= m_model->rules().size()) {
         return;
     }
-    m_model->updateRule(m_selectedIndex, buildRule());
+    updateCurrentRule();
+    m_model->updateRule(m_selectedIndex, m_currentRule);
 }
 
 QString RuleEditorController::previewJson() const
 {
-    const auto rule = buildRule();
-    if (rule.isEmpty()) {
+    const auto rule = currentRule();
+    if (rule == nullptr) {
         return QStringLiteral("未选择规则");
     }
-    const auto doc = QJsonDocument::fromVariant(rule);
+    const auto doc = QJsonDocument::fromVariant(rule->toJSON());
     return QString::fromUtf8(doc.toJson(QJsonDocument::Indented));
 }
 
 void RuleEditorController::loadRule(int index)
 {
     if (!m_model || index < 0 || index >= m_model->rules().size()) {
-        m_ruleId.clear();
-        m_ruleFormId.clear();
-        m_ruleResult = QStringLiteral("01");
-        m_ruleEnabled = true;
-        emit ruleIdChanged();
-        emit ruleFormIdChanged();
-        emit ruleResultChanged();
-        emit ruleEnabledChanged();
-        m_conditions.setItems({});
+        m_currentRule = nullptr;
+        emit currentRuleChanged();
+        updateCurrentRule();
         return;
     }
 
-    const auto rule = m_model->rules().at(index).toMap();
-    m_ruleId = rule.value("id").toString();
-    m_ruleFormId = rule.value("$form_id").toString();
-    if (m_ruleFormId.isEmpty()) {
-        m_ruleFormId = rule.value("formId").toString();
-    }
-    m_ruleResult = rule.value("$result").toString();
-    if (m_ruleResult.isEmpty()) {
-        m_ruleResult = rule.value("result").toString();
-    }
-    const auto enabledValue = rule.value("$enabled");
-    m_ruleEnabled = enabledValue.isValid() ? enabledValue.toBool() : rule.value("enabled").toBool();
-    emit ruleIdChanged();
-    emit ruleFormIdChanged();
-    emit ruleResultChanged();
-    emit ruleEnabledChanged();
+    const auto& existingRule = m_model->rules().at(index);
+    const auto rule = new Rule(existingRule->id(), existingRule->formId(), existingRule->conditions(), existingRule->result(), existingRule->enabled());
+    m_currentRule = rule;
+    emit currentRuleChanged();
+    
+    // Keep `currentRule` up to date when the condition list changes.
+    connect(m_currentRule, &Rule::conditionsChanged, this,
+        [this]() { updateCurrentRule(); });
+    connect(m_currentRule, &Rule::conditionsChanged, this,
+        [this]() { m_conditionModel->setConditions(m_currentRule->conditions()); });
 
-    QVector<ConditionModel::Item> items;
-    const auto conditionsValue = rule.value("$and");
-    const auto conditions = conditionsValue.isValid() ? conditionsValue.toList() : rule.value("and").toList();
-    items.reserve(conditions.size());
-    for (const auto& item : conditions) {
-        const auto map = item.toMap();
-        const auto valueText = m_controller ? m_controller->formatValue(map.value("value")) : map.value("value").toString();
-        items.push_back({ map.value("key").toString(), map.value("op").toString(), valueText });
-    }
-    m_conditions.setItems(items);
-    normalizeConditionsForForm(m_ruleFormId);
-}
-
-QVariantMap RuleEditorController::buildRule() const
-{
-    if (m_selectedIndex < 0) {
-        return {};
-    }
-    QVariantList conditionList;
-    const auto items = m_conditions.items();
-    conditionList.reserve(items.size());
-    for (const auto& item : items) {
-        const auto value = m_controller ? m_controller->parseValue(item.op, item.valueText) : QVariant(item.valueText);
-        conditionList.append(QVariantMap{
-            { "key", item.key },
-            { "op", item.op },
-            { "value", value }
-        });
-    }
-    return QVariantMap{
-        { "id", m_ruleId },
-        { "$form_id", m_ruleFormId },
-        { "$and", conditionList },
-        { "$result", m_ruleResult },
-        { "$enabled", m_ruleEnabled }
-    };
+    m_currentRule->setConditions(existingRule->conditions());
+    normalizeConditionsForForm(m_currentRule->formId());
+    updateCurrentRule();
 }
 
 QStringList RuleEditorController::fieldKeysForForm(const QString& formId) const
@@ -285,21 +197,29 @@ void RuleEditorController::normalizeConditionsForForm(const QString& formId)
     if (keys.isEmpty()) {
         return;
     }
-    auto items = m_conditions.items();
-    if (items.isEmpty()) {
-        return;
-    }
-    const auto defaultKey = keys.first();
-    bool changed = false;
-    for (auto& item : items) {
-        if (!keys.contains(item.key)) {
-            item.key = defaultKey;
-            changed = true;
+    auto conditions = m_currentRule->conditions();
+    for (int i = 0; i < conditions.size(); ++i) {
+        const auto& condition = conditions[i];
+        if (!keys.contains(condition->key())) {
+            m_currentRule->setKey(i, keys.first());
+        } else {
+            m_currentRule->setKey(i, condition->key());
         }
     }
-    if (changed) {
-        m_conditions.setItems(items);
+    m_currentRule->setConditions(conditions);
+
+    // m_conditionModel->setConditions(conditions);
+}
+
+void RuleEditorController::updateCurrentRule()
+{
+    const auto rule = currentRule();
+    if (m_currentRule == rule) {
+        return;
     }
+    m_currentRule = rule;
+    emit currentRuleChanged();
+    m_conditionModel->setConditions(m_currentRule->conditions());
 }
 
 void RuleEditorController::ensureSelection()
@@ -325,4 +245,18 @@ void RuleEditorController::ensureSelection()
         emit selectedIndexChanged();
     }
     loadRule(m_selectedIndex);
+}
+
+ConditionModel* RuleEditorController::conditionModel() const
+{
+    return m_conditionModel;
+}
+
+void RuleEditorController::setConditionModel(ConditionModel* model)
+{
+    if (m_conditionModel == model) {
+        return;
+    }
+    m_conditionModel = model;
+    emit conditionModelChanged();
 }

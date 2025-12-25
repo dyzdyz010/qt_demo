@@ -1,6 +1,8 @@
 // ConditionModel implementation.
 #include "conditionmodel.h"
 
+#include <QDebug>
+
 ConditionModel::ConditionModel(QObject* parent)
     : QAbstractListModel(parent)
 {
@@ -11,22 +13,22 @@ int ConditionModel::rowCount(const QModelIndex& parent) const
     if (parent.isValid()) {
         return 0;
     }
-    return m_items.size();
+    return m_conditions.size();
 }
 
 QVariant ConditionModel::data(const QModelIndex& index, int role) const
 {
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_items.size()) {
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_conditions.size()) {
         return {};
     }
-    const auto& item = m_items.at(index.row());
+    const auto& condition = m_conditions.at(index.row());
     switch (role) {
     case KeyRole:
-        return item.key;
+        return condition->key();
     case OpRole:
-        return item.op;
+        return condition->op();
     case ValueTextRole:
-        return item.valueText;
+        return condition->value().toString();
     default:
         return {};
     }
@@ -34,19 +36,19 @@ QVariant ConditionModel::data(const QModelIndex& index, int role) const
 
 bool ConditionModel::setData(const QModelIndex& index, const QVariant& value, int role)
 {
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_items.size()) {
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_conditions.size()) {
         return false;
     }
-    auto& item = m_items[index.row()];
+    auto& condition = m_conditions[index.row()];
     switch (role) {
     case KeyRole:
-        item.key = value.toString();
+        condition->setKey(value.toString());
         break;
     case OpRole:
-        item.op = value.toString();
+        condition->setOp(value.toString());
         break;
     case ValueTextRole:
-        item.valueText = value.toString();
+        condition->setValue(value);
         break;
     default:
         return false;
@@ -72,39 +74,45 @@ QHash<int, QByteArray> ConditionModel::roleNames() const
     };
 }
 
-void ConditionModel::setItems(const QVector<Item>& items)
+void ConditionModel::setConditions(const QList<Condition*>& conditions)
 {
     beginResetModel();
-    m_items = items;
+    m_conditions = conditions;
     endResetModel();
 }
 
-QVector<ConditionModel::Item> ConditionModel::items() const
+QList<Condition*> ConditionModel::conditions() const
 {
-    return m_items;
+    return m_conditions;
 }
 
 void ConditionModel::addCondition(const QString& key, const QString& op, const QString& valueText)
 {
-    const int row = m_items.size();
+    const int row = m_conditions.size();
     beginInsertRows(QModelIndex(), row, row);
-    m_items.push_back({ key, op, valueText });
+    m_conditions.append(new Condition(key, op, valueText));
     endInsertRows();
 }
 
 void ConditionModel::removeCondition(int row)
 {
-    if (row < 0 || row >= m_items.size()) {
+    qDebug() << "removeCondition" << row;
+    qDebug() << "m_conditions.size()" << m_conditions.size();
+    if (row < 0 || row >= m_conditions.size()) {
         return;
     }
     beginRemoveRows(QModelIndex(), row, row);
-    m_items.removeAt(row);
+    delete m_conditions.takeAt(row);
     endRemoveRows();
 }
 
 void ConditionModel::setKey(int row, const QString& key)
 {
-    setData(index(row), key, KeyRole);
+    if (row < 0 || row >= m_conditions.size()) {
+        return;
+    }
+    m_conditions[row]->setKey(key);
+    emit dataChanged(index(row), index(row), { KeyRole });
 }
 
 void ConditionModel::setOp(int row, const QString& op)

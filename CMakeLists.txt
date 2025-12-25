@@ -43,6 +43,8 @@ qt_add_qml_module(appqt_demo
         ConditionRow.qml
         RulePreviewDialog.qml
         Theme.qml
+        SOURCES condition.h condition.cpp
+        SOURCES rule.h rule.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

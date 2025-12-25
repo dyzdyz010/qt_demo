@@ -3,24 +3,22 @@
 
 #include <QObject>
 #include <QStringList>
+#include <QVariantMap>
+#include <qtmetamacros.h>
 
 #include "conditionmodel.h"
 #include "formmodel.h"
 #include "rulecontroller.h"
 #include "rulemodel.h"
 
-class RuleEditorController : public QObject
-{
+class RuleEditorController : public QObject {
     Q_OBJECT
     Q_PROPERTY(RuleModel* model READ model WRITE setModel NOTIFY modelChanged)
     Q_PROPERTY(FormModel* formModel READ formModel WRITE setFormModel NOTIFY formModelChanged)
     Q_PROPERTY(RuleController* controller READ controller WRITE setController NOTIFY controllerChanged)
     Q_PROPERTY(int selectedIndex READ selectedIndex WRITE setSelectedIndex NOTIFY selectedIndexChanged)
-    Q_PROPERTY(QString ruleId READ ruleId NOTIFY ruleIdChanged)
-    Q_PROPERTY(QString ruleFormId READ ruleFormId WRITE setRuleFormId NOTIFY ruleFormIdChanged)
-    Q_PROPERTY(QString ruleResult READ ruleResult WRITE setRuleResult NOTIFY ruleResultChanged)
-    Q_PROPERTY(bool ruleEnabled READ ruleEnabled WRITE setRuleEnabled NOTIFY ruleEnabledChanged)
-    Q_PROPERTY(ConditionModel* conditionsModel READ conditionsModel CONSTANT)
+    Q_PROPERTY(Rule* currentRule READ currentRule NOTIFY currentRuleChanged)
+    Q_PROPERTY(ConditionModel* conditionModel READ conditionModel WRITE setConditionModel NOTIFY conditionModelChanged)
 public:
     explicit RuleEditorController(QObject* parent = nullptr);
 
@@ -36,17 +34,10 @@ public:
     int selectedIndex() const;
     void setSelectedIndex(int index);
 
-    QString ruleId() const;
-    QString ruleFormId() const;
-    void setRuleFormId(const QString& formId);
+    Rule* currentRule() const;
 
-    QString ruleResult() const;
-    void setRuleResult(const QString& result);
-
-    bool ruleEnabled() const;
-    void setRuleEnabled(bool enabled);
-
-    ConditionModel* conditionsModel();
+    ConditionModel* conditionModel() const;
+    void setConditionModel(ConditionModel* model);
 
     Q_INVOKABLE void addRule();
     Q_INVOKABLE void removeRule();
@@ -60,17 +51,14 @@ signals:
     void formModelChanged();
     void controllerChanged();
     void selectedIndexChanged();
-    void ruleIdChanged();
-    void ruleFormIdChanged();
-    void ruleResultChanged();
-    void ruleEnabledChanged();
-
+    void currentRuleChanged();
+    void conditionModelChanged();
 private:
     void loadRule(int index);
-    QVariantMap buildRule() const;
     void ensureSelection();
     QStringList fieldKeysForForm(const QString& formId) const;
     void normalizeConditionsForForm(const QString& formId);
+    void updateCurrentRule();
 
     QMetaObject::Connection m_rulesChangedConnection;
 
@@ -79,10 +67,6 @@ private:
     RuleController* m_controller = nullptr;
     int m_selectedIndex = -1;
 
-    QString m_ruleId;
-    QString m_ruleFormId;
-    QString m_ruleResult;
-    bool m_ruleEnabled = true;
-
-    ConditionModel m_conditions;
+    Rule* m_currentRule = nullptr;
+    ConditionModel* m_conditionModel = nullptr;
 };

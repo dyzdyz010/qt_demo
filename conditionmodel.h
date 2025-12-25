@@ -1,11 +1,16 @@
 // QAbstractListModel for editing rule conditions in QML.
 #pragma once
 
+#include "condition.h"
 #include <QAbstractListModel>
 
-class ConditionModel : public QAbstractListModel
-{
+class ConditionModel : public QAbstractListModel {
     Q_OBJECT
+    Q_PROPERTY(QList<Condition*> conditions READ conditions WRITE setConditions NOTIFY conditionsChanged)
+    
+signals:
+    void conditionsChanged();
+
 public:
     enum ConditionRoles {
         KeyRole = Qt::UserRole + 1,
@@ -21,14 +26,8 @@ public:
     Qt::ItemFlags flags(const QModelIndex& index) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    struct Item {
-        QString key;
-        QString op;
-        QString valueText;
-    };
-
-    void setItems(const QVector<Item>& items);
-    QVector<Item> items() const;
+    QList<Condition*> conditions() const;
+    void setConditions(const QList<Condition*>& conditions);
 
     Q_INVOKABLE void addCondition(const QString& key, const QString& op, const QString& valueText);
     Q_INVOKABLE void removeCondition(int row);
@@ -37,5 +36,5 @@ public:
     Q_INVOKABLE void setValueText(int row, const QString& valueText);
 
 private:
-    QVector<Item> m_items;
+    QList<Condition*> m_conditions;
 };

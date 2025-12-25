@@ -85,7 +85,7 @@ Item {
         Switch {
             property var field
 
-            checked: !!formData[field.key]
+            checked: !!root.formData[field.key]
             text: checked ? "是" : "否"
             onToggled: formController.setFieldValue(field.key, checked)
         }

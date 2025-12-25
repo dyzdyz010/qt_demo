@@ -13,7 +13,7 @@ Item {
     required property Theme theme
     property int selectedIndex: -1
 
-    signal ruleSelected(int index)
+    signal ruleSelected(int selectedIndex)
     signal addRequested()
     signal deleteRequested()
 

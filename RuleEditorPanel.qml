@@ -44,7 +44,7 @@ Item {
 
                     Label { text: "规则编号"; Layout.preferredWidth: 80 }
                     TextField {
-                        text: ruleEditor ? ruleEditor.ruleId : ""
+                        text: ruleEditor ? ruleEditor.currentRule.id : ""
                         readOnly: true
                         Layout.fillWidth: true
                     }
@@ -67,7 +67,7 @@ Item {
                             }
                             var forms = formModel.forms;
                             for (var i = 0; i < forms.length; ++i) {
-                                if (forms[i].id === ruleEditor.ruleFormId) {
+                                if (forms[i].id === ruleEditor.currentRule.formId) {
                                     return i;
                                 }
                             }
@@ -75,7 +75,7 @@ Item {
                         }
                         onActivated: {
                             if (ruleEditor) {
-                                ruleEditor.ruleFormId = currentValue;
+                                ruleEditor.currentRule.formId = currentValue;
                             }
                         }
                     }
@@ -98,7 +98,7 @@ Item {
                             }
                             var items = ruleEditor.model.resultOptions;
                             for (var i = 0; i < items.length; ++i) {
-                                if (items[i].code === ruleEditor.ruleResult) {
+                                if (items[i].code === ruleEditor.currentRule.result) {
                                     return i;
                                 }
                             }
@@ -106,7 +106,7 @@ Item {
                         }
                         onActivated: {
                             if (ruleEditor) {
-                                ruleEditor.ruleResult = currentValue;
+                                ruleEditor.currentRule.result = currentValue;
                             }
                         }
                     }
@@ -118,10 +118,10 @@ Item {
 
                     Label { text: "启用"; Layout.preferredWidth: 80 }
                     Switch {
-                        checked: ruleEditor ? ruleEditor.ruleEnabled : false
+                        checked: ruleEditor ? ruleEditor.currentRule.enabled : false
                         onToggled: {
                             if (ruleEditor) {
-                                ruleEditor.ruleEnabled = checked;
+                                ruleEditor.currentRule.enabled = checked;
                             }
                         }
                     }
@@ -145,6 +145,15 @@ Item {
             }
         }
 
+
+        // Label {
+        //     text: qsTr("%1").arg(JSON.stringify(root.ruleEditor ? root.ruleEditor.currentRule.conditions : []))
+        // }
+
+        // TextArea {
+        //     text: qsTr("%1").arg(JSON.stringify(ruleController.model.opOptions))
+        // }
+
         Frame {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -155,20 +164,22 @@ Item {
                 border.color: theme.borderColor
             }
 
+
             ListView {
                 id: conditionList
                 anchors.fill: parent
-                model: ruleEditor ? ruleEditor.conditionsModel : null
+                model: ruleEditor ? ruleEditor.currentRule.conditions : null
                 spacing: theme.spacingSm
                 clip: true
                 reuseItems: false
                 ScrollBar.vertical: ScrollBar {}
                 delegate: ConditionRow {
-                    conditionsModel: ruleEditor ? ruleEditor.conditionsModel : null
-                    conditionIndex: index
+                    id: condRow
+                    conditionsModel: ruleEditor ? ruleEditor.conditionModel : null
+                    conditionIndex: condRow.ObjectModel.index
                     formModel: root.formModel
                     ruleController: root.ruleController
-                    formId: ruleEditor ? ruleEditor.ruleFormId : ""
+                    formId: ruleEditor ? ruleEditor.currentRule.formId : ""
                     theme: root.theme
                 }
             }

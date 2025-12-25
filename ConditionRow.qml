@@ -48,12 +48,22 @@ Item {
     Frame {
         id: contentFrame
         width: parent.width
+        Layout.fillHeight: true
         padding: theme.spacingSm
         background: Rectangle {
             color: theme.panelMuted
             radius: theme.radiusSm
             border.color: theme.borderColor
         }
+
+
+        // Label {
+        //     text: qsTr("%1").arg(JSON.stringify(formModel.fieldsForForm(formId)))
+        // }
+
+        // Label {
+        //     text: qsTr("%1").arg(JSON.stringify(ruleController.model.opOptions))
+        // }
 
         RowLayout {
             width: parent.width
@@ -66,7 +76,8 @@ Item {
                 textRole: "label"
                 valueRole: "key"
                 currentIndex: {
-                    var idx = findIndexByRole(fieldCombo.model, "key", roleKey);
+                    var condition = conditionsModel.conditions[conditionIndex];
+                    var idx = findIndexByRole(fieldCombo.model, "key", condition.key);
                     return idx >= 0 ? idx : 0;
                 }
                 onActivated: {
@@ -120,35 +131,35 @@ Item {
                         }
                     }
 
-                    ColumnLayout {
-                        spacing: theme.spacingXs
+                    // ColumnLayout {
+                    //     spacing: theme.spacingXs
 
-                        Repeater {
-                            model: listModel
-                            delegate: RowLayout {
-                                spacing: theme.spacingXs
-                                Layout.fillWidth: true
-                                property int valueIndex: index
+                    //     Repeater {
+                    //         model: listModel
+                    //         delegate: RowLayout {
+                    //             spacing: theme.spacingXs
+                    //             Layout.fillWidth: true
+                    //             property int valueIndex: index
 
-                                TextField {
-                                    Layout.fillWidth: true
-                                    placeholderText: "选项值"
-                                    text: itemText
-                                    onTextEdited: listModel.setItemText(valueIndex, text)
-                                }
+                    //             TextField {
+                    //                 Layout.fillWidth: true
+                    //                 placeholderText: "选项值"
+                    //                 text: itemText
+                    //                 onTextEdited: listModel.setItemText(valueIndex, text)
+                    //             }
 
-                                Button {
-                                    text: "删除"
-                                    onClicked: listModel.removeItem(valueIndex)
-                                }
-                            }
-                        }
+                    //             Button {
+                    //                 text: "删除"
+                    //                 onClicked: listModel.removeItem(valueIndex)
+                    //             }
+                    //         }
+                    //     }
 
-                        Button {
-                            text: "添加选项"
-                            onClicked: listModel.appendItem("")
-                        }
-                    }
+                    //     Button {
+                    //         text: "添加选项"
+                    //         onClicked: listModel.appendItem("")
+                    //     }
+                    // }
                 }
             }
 

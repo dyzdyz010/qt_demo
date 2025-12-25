@@ -3,8 +3,10 @@
 
 #include <QVariant>
 
+#include "rule.h"
+
 namespace RuleEngine {
-QVariantMap evaluate(const QVariantList& rules,
+QVariantMap evaluate(const QList<Rule*>& rules,
                      const QString& formId,
                      const QVariantMap& formData,
                      const QVariantMap& resultMap);

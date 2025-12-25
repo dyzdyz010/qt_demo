@@ -34,7 +34,7 @@ Item {
                 selectedIndex: ruleEditor ? ruleEditor.selectedIndex : -1
                 onRuleSelected: {
                     if (ruleEditor) {
-                        ruleEditor.selectedIndex = index;
+                        ruleEditor.selectedIndex = selectedIndex;
                     }
                 }
                 onAddRequested: {
